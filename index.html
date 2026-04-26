@@ -1,696 +1,587 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Beach Connect Four — Shrimp vs Lobster</title>
-<style>
-  :root {
-    --sand: #f4e2b8;
-    --sand-dark: #d9b97a;
-    --ocean: #2a9ec9;
-    --ocean-deep: #1d6e9e;
-    --foam: #e8f6fb;
-    --sun: #ffd35a;
-    --coral: #ff7f6b;
-    --palm: #2d8a4e;
-    --shrimp: #ffd84d;
-    --shrimp-deep: #c98a00;
-    --lobster: #ff5b3c;
-    --lobster-deep: #c93418;
-    --board: #f8d98a;
-    --board-shadow: #b88a30;
-  }
-
-  * { box-sizing: border-box; }
-
-  html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    font-family: 'Trebuchet MS', 'Helvetica Neue', sans-serif;
-    color: #2a3a4a;
-    overflow-x: hidden;
-  }
-
-  body {
-    min-height: 100vh;
-    background:
-      linear-gradient(
-        to bottom,
-        #ffd98a 0%,
-        #ffb37a 18%,
-        #ff9a7e 32%,
-        #7ec9e8 33%,
-        #4fb0d6 60%,
-        #2a9ec9 66%,
-        #f4e2b8 67%,
-        #e9cf90 100%
-      );
-    background-attachment: fixed;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px 16px 60px;
-    position: relative;
-  }
-
-  /* Sun */
-  .sun {
-    position: fixed;
-    top: 30px;
-    right: 60px;
-    width: 110px;
-    height: 110px;
-    background: radial-gradient(circle, #fff7c2 0%, var(--sun) 55%, #ffae3a 100%);
-    border-radius: 50%;
-    box-shadow:
-      0 0 40px rgba(255, 211, 90, 0.7),
-      0 0 80px rgba(255, 175, 90, 0.5);
-    z-index: 0;
-    pointer-events: none;
-    animation: pulse 4s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-  }
-
-  /* Clouds */
-  .cloud {
-    position: fixed;
-    background: #ffffff;
-    border-radius: 50px;
-    opacity: 0.85;
-    z-index: 0;
-    pointer-events: none;
-    box-shadow:
-      30px 0 0 -8px #fff,
-      -30px 5px 0 -5px #fff,
-      55px 5px 0 -10px #fff;
-  }
-  .cloud.c1 { top: 60px;  left: 8%;  width: 80px; height: 26px; animation: drift 60s linear infinite; }
-  .cloud.c2 { top: 110px; left: 30%; width: 60px; height: 20px; animation: drift 80s linear infinite; }
-  .cloud.c3 { top: 40px;  left: 55%; width: 70px; height: 22px; animation: drift 70s linear infinite; }
-  @keyframes drift {
-    from { transform: translateX(-200px); }
-    to   { transform: translateX(120vw); }
-  }
-
-  /* Palm trees */
-  .palm {
-    position: fixed;
-    bottom: 0;
-    z-index: 1;
-    pointer-events: none;
-    width: 140px;
-    height: 280px;
-  }
-  .palm.left  { left: 10px; transform: scaleX(-1); }
-  .palm.right { right: 10px; }
-
-  /* Seagulls */
-  .gull {
-    position: fixed;
-    color: #2a3a4a;
-    font-size: 22px;
-    z-index: 0;
-    pointer-events: none;
-    animation: fly 25s linear infinite;
-  }
-  .gull.g1 { top: 90px;  left: -50px; animation-duration: 30s; }
-  .gull.g2 { top: 150px; left: -50px; animation-duration: 38s; animation-delay: -10s; }
-  @keyframes fly {
-    from { transform: translateX(0)   translateY(0); }
-    50%  { transform: translateX(50vw) translateY(-15px); }
-    to   { transform: translateX(110vw) translateY(0); }
-  }
-
-  /* Header */
-  header {
-    text-align: center;
-    z-index: 2;
-    margin-bottom: 12px;
-  }
-
-  h1 {
-    margin: 0;
-    font-size: clamp(28px, 5vw, 44px);
-    color: #ffffff;
-    text-shadow:
-      2px 2px 0 var(--coral),
-      4px 4px 0 var(--ocean-deep),
-      6px 6px 12px rgba(0, 0, 0, 0.25);
-    letter-spacing: 1px;
-  }
-
-  .subtitle {
-    margin: 6px 0 0;
-    font-size: 16px;
-    color: #fff;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
-    font-style: italic;
-  }
-
-  /* Status bar */
-  .status {
-    z-index: 2;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(4px);
-    padding: 10px 18px;
-    border-radius: 30px;
-    margin: 14px 0;
-    font-size: 18px;
-    font-weight: bold;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 28px;
-  }
-
-  .status .turn-icon {
-    font-size: 26px;
-    animation: bob 1.2s ease-in-out infinite;
-    display: inline-block;
-  }
-  @keyframes bob {
-    0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-4px); }
-  }
-
-  /* Score */
-  .scores {
-    z-index: 2;
-    display: flex;
-    gap: 14px;
-    margin-bottom: 12px;
-  }
-  .score {
-    background: rgba(255, 255, 255, 0.85);
-    border-radius: 14px;
-    padding: 8px 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: bold;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
-  }
-  .score .icon { font-size: 22px; }
-  .score.shrimp  { border: 2px solid var(--shrimp-deep);  color: var(--shrimp-deep); }
-  .score.lobster { border: 2px solid var(--lobster-deep); color: var(--lobster-deep); }
-
-  /* Board */
-  .board-wrap {
-    position: relative;
-    z-index: 2;
-    padding: 18px;
-    border-radius: 22px;
-    background:
-      linear-gradient(180deg, var(--board) 0%, #e6c168 100%);
-    box-shadow:
-      0 10px 0 var(--board-shadow),
-      0 16px 30px rgba(0, 0, 0, 0.3),
-      inset 0 0 0 4px rgba(255, 255, 255, 0.4);
-  }
-
-  .board {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 10px;
-    background: linear-gradient(180deg, #4fb0d6 0%, #1d6e9e 100%);
-    padding: 12px;
-    border-radius: 14px;
-    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
-  }
-
-  .cell {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 30% 30%, #fff8d6 0%, var(--sand) 60%, var(--sand-dark) 100%);
-    box-shadow:
-      inset 0 4px 6px rgba(0, 0, 0, 0.25),
-      inset 0 -2px 3px rgba(255, 255, 255, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 38px;
-    cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-    position: relative;
-    user-select: none;
-  }
-
-  .cell.hover-target {
-    background:
-      radial-gradient(circle at 30% 30%, #ffffff 0%, #ffeec2 60%, #f0ce7a 100%);
-    transform: scale(1.04);
-  }
-
-  .cell.shrimp,
-  .cell.lobster {
-    cursor: default;
-  }
-
-  .cell.shrimp {
-    background:
-      radial-gradient(circle at 30% 30%, #fff8c5 0%, var(--shrimp) 55%, var(--shrimp-deep) 100%);
-    box-shadow:
-      inset 0 -3px 6px rgba(0, 0, 0, 0.25),
-      inset 0 3px 4px rgba(255, 255, 255, 0.5),
-      0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-
-  .cell.lobster {
-    background:
-      radial-gradient(circle at 30% 30%, #ffb39e 0%, var(--lobster) 55%, var(--lobster-deep) 100%);
-    box-shadow:
-      inset 0 -3px 6px rgba(0, 0, 0, 0.25),
-      inset 0 3px 4px rgba(255, 255, 255, 0.5),
-      0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-
-  .cell.dropping {
-    animation: drop 0.45s cubic-bezier(0.45, 0.05, 0.55, 0.95);
-  }
-  @keyframes drop {
-    0%   { transform: translateY(-360px); }
-    70%  { transform: translateY(0);      }
-    80%  { transform: translateY(-14px);  }
-    100% { transform: translateY(0);      }
-  }
-
-  .cell.win {
-    animation: glow 1s ease-in-out infinite;
-  }
-  @keyframes glow {
-    0%, 100% {
-      box-shadow:
-        0 0 10px 4px rgba(255, 215, 90, 0.9),
-        inset 0 -3px 6px rgba(0, 0, 0, 0.25),
-        inset 0 3px 4px rgba(255, 255, 255, 0.5);
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connect Four — ChatGPT 5.5 Edition</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #111a30;
+      --panel-soft: #1a2544;
+      --line: #2d3b66;
+      --text: #e8f0ff;
+      --muted: #9fb2d9;
+      --accent: #42d392;
+      --p1: #ffd166;
+      --p2: #ef476f;
+      --win: #7ee081;
+      --shadow: rgba(0, 0, 0, 0.35);
     }
-    50% {
-      box-shadow:
-        0 0 20px 8px rgba(255, 215, 90, 1),
-        inset 0 -3px 6px rgba(0, 0, 0, 0.25),
-        inset 0 3px 4px rgba(255, 255, 255, 0.5);
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 90% -20%, #223d7c 0%, transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, #224b50 0%, transparent 60%),
+        var(--bg);
+      display: grid;
+      place-items: center;
+      padding: 24px;
     }
-  }
 
-  /* Column hover indicator */
-  .column-hint {
-    position: absolute;
-    top: -38px;
-    width: 64px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 26px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.15s ease, transform 0.15s ease;
-  }
-  .column-hint.visible {
-    opacity: 1;
-    transform: translateY(4px);
-    animation: bob 1.2s ease-in-out infinite;
-  }
+    .app {
+      width: min(950px, 100%);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)), var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 30px 60px var(--shadow);
+      overflow: hidden;
+    }
 
-  /* Controls */
-  .controls {
-    z-index: 2;
-    margin-top: 18px;
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
+    header {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
 
-  button {
-    background: linear-gradient(180deg, var(--coral) 0%, #e75a48 100%);
-    color: white;
-    border: none;
-    padding: 12px 22px;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 30px;
-    cursor: pointer;
-    box-shadow:
-      0 4px 0 #b53b2e,
-      0 6px 12px rgba(0, 0, 0, 0.2);
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
-    font-family: inherit;
-    letter-spacing: 0.5px;
-  }
-  button:hover { transform: translateY(-1px); }
-  button:active {
-    transform: translateY(3px);
-    box-shadow: 0 1px 0 #b53b2e, 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
+    h1 {
+      font-size: clamp(1.15rem, 2vw, 1.5rem);
+      margin: 0;
+      font-weight: 700;
+    }
 
-  button.secondary {
-    background: linear-gradient(180deg, var(--ocean) 0%, var(--ocean-deep) 100%);
-    box-shadow: 0 4px 0 #144e72, 0 6px 12px rgba(0, 0, 0, 0.2);
-  }
-  button.secondary:active {
-    box-shadow: 0 1px 0 #144e72, 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
+    .badge {
+      font-size: 0.78rem;
+      color: #041e11;
+      background: var(--accent);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
 
-  /* Sand at bottom decorations */
-  .shells {
-    position: fixed;
-    bottom: 6px;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: space-around;
-    font-size: 22px;
-    z-index: 1;
-    pointer-events: none;
-    opacity: 0.85;
-  }
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 0;
+    }
 
-  /* Confetti / beach ball winner overlay */
-  .winner-overlay {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-    z-index: 5;
-  }
-  .ball {
-    position: absolute;
-    top: -40px;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: conic-gradient(
-      var(--coral) 0 25%,
-      #fff 0 50%,
-      var(--ocean) 0 75%,
-      var(--sun) 0 100%
-    );
-    box-shadow: inset -2px -2px 4px rgba(0, 0, 0, 0.2);
-    animation: fall linear forwards;
-  }
-  @keyframes fall {
-    to { transform: translateY(110vh) rotate(720deg); }
-  }
+    .panel {
+      padding: 18px;
+      border-right: 1px solid var(--line);
+      background: rgba(255,255,255,0.01);
+    }
 
-  @media (max-width: 560px) {
-    .cell { width: 42px; height: 42px; font-size: 26px; }
-    .column-hint { width: 42px; font-size: 20px; top: -32px; }
-    .palm { width: 90px; height: 180px; }
-    .sun { width: 70px; height: 70px; right: 20px; top: 14px; }
-  }
-</style>
+    .section-title {
+      margin: 0 0 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      font-size: .75rem;
+      font-weight: 700;
+    }
+
+    .card {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 8px 0;
+    }
+
+    .muted { color: var(--muted); font-size: .9rem; }
+
+    select, button {
+      font: inherit;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #0f1730;
+      color: var(--text);
+      padding: 8px 10px;
+    }
+
+    button {
+      cursor: pointer;
+      background: linear-gradient(180deg, #1a2a53, #122040);
+      width: 100%;
+      margin-top: 8px;
+      font-weight: 600;
+    }
+
+    button:hover { filter: brightness(1.08); }
+
+    .game {
+      padding: 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .status {
+      border: 1px solid var(--line);
+      background: var(--panel-soft);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-weight: 600;
+    }
+
+    .scores {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .score {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #101a33;
+      display: flex;
+      justify-content: space-between;
+      font-weight: 700;
+    }
+
+    .board-wrap {
+      overflow-x: auto;
+      padding-bottom: 6px;
+    }
+
+    .board {
+      width: fit-content;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(7, 72px);
+      gap: 8px;
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, #27406e, #1d3155);
+    }
+
+    .cell {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: none;
+      background: radial-gradient(circle at 30% 25%, #c8d7ff, #8ea6d8);
+      cursor: pointer;
+      transition: transform .12s ease;
+      box-shadow: inset 0 -6px 10px rgba(0,0,0,.22);
+      font-size: 32px;
+    }
+
+    .cell:hover { transform: translateY(-2px); }
+    .cell.p1 { background: radial-gradient(circle at 30% 25%, #ffeab3, var(--p1)); }
+    .cell.p2 { background: radial-gradient(circle at 30% 25%, #ffb2c4, var(--p2)); }
+    .cell.win { outline: 4px solid var(--win); outline-offset: -3px; }
+    .cell:disabled { cursor: default; }
+
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+      .panel { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+
+    @media (max-width: 520px) {
+      .board { grid-template-columns: repeat(7, 48px); gap: 6px; }
+      .cell { width: 48px; height: 48px; font-size: 22px; }
+    }
+  </style>
 </head>
 <body>
+  <main class="app">
+    <header>
+      <h1>Connect Four</h1>
+      <span class="badge">Rebuilt with ChatGPT 5.5 workflow</span>
+    </header>
 
-<div class="sun" aria-hidden="true"></div>
-<div class="cloud c1" aria-hidden="true"></div>
-<div class="cloud c2" aria-hidden="true"></div>
-<div class="cloud c3" aria-hidden="true"></div>
+    <div class="layout">
+      <aside class="panel">
+        <p class="section-title">Game Mode</p>
+        <div class="card">
+          <div class="row">
+            <label for="mode">Opponent</label>
+            <select id="mode">
+              <option value="human">Human vs Human</option>
+              <option value="ai">Human vs ChatGPT 5.5 Bot</option>
+            </select>
+          </div>
+          <div class="row" id="difficulty-row" style="display:none;">
+            <label for="difficulty">Difficulty</label>
+            <select id="difficulty">
+              <option value="easy">Easy</option>
+              <option value="medium" selected>Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+        </div>
 
-<div class="gull g1" aria-hidden="true">~v~</div>
-<div class="gull g2" aria-hidden="true">~v~</div>
+        <p class="section-title">Actions</p>
+        <div class="card">
+          <button id="new-game">New Game</button>
+          <button id="reset-scores">Reset Scores</button>
+        </div>
 
-<!-- Palm trees (SVG) -->
-<svg class="palm left" viewBox="0 0 140 280" aria-hidden="true">
-  <path d="M70 280 Q60 200 72 130 Q74 110 70 90" stroke="#6b3a16" stroke-width="10" fill="none" stroke-linecap="round"/>
-  <path d="M70 90 Q40 70 10 80 Q40 60 70 80" fill="#2d8a4e"/>
-  <path d="M70 90 Q100 70 130 80 Q100 60 70 80" fill="#2d8a4e"/>
-  <path d="M70 90 Q50 50 30 30 Q60 50 72 80" fill="#3aa05d"/>
-  <path d="M70 90 Q90 50 110 30 Q80 50 70 80" fill="#3aa05d"/>
-  <path d="M70 88 Q70 50 60 20 Q75 50 76 80" fill="#247a40"/>
-  <circle cx="60" cy="100" r="5" fill="#8b4513"/>
-  <circle cx="78" cy="102" r="5" fill="#8b4513"/>
-  <circle cx="70" cy="110" r="5" fill="#8b4513"/>
-</svg>
-<svg class="palm right" viewBox="0 0 140 280" aria-hidden="true">
-  <path d="M70 280 Q60 200 72 130 Q74 110 70 90" stroke="#6b3a16" stroke-width="10" fill="none" stroke-linecap="round"/>
-  <path d="M70 90 Q40 70 10 80 Q40 60 70 80" fill="#2d8a4e"/>
-  <path d="M70 90 Q100 70 130 80 Q100 60 70 80" fill="#2d8a4e"/>
-  <path d="M70 90 Q50 50 30 30 Q60 50 72 80" fill="#3aa05d"/>
-  <path d="M70 90 Q90 50 110 30 Q80 50 70 80" fill="#3aa05d"/>
-  <path d="M70 88 Q70 50 60 20 Q75 50 76 80" fill="#247a40"/>
-  <circle cx="60" cy="100" r="5" fill="#8b4513"/>
-  <circle cx="78" cy="102" r="5" fill="#8b4513"/>
-  <circle cx="70" cy="110" r="5" fill="#8b4513"/>
-</svg>
+        <p class="section-title">Tips</p>
+        <div class="card muted">
+          Drop 4 in a row to win. The bot prioritizes win/block moves, then center control and future setup.
+        </div>
+      </aside>
 
-<header>
-  <h1>🏖️ Beach Connect Four 🌊</h1>
-  <p class="subtitle">Shrimp vs. Lobster — first to 4 in a row wins the tide!</p>
-</header>
+      <section class="game">
+        <div class="status" id="status">Player 1's turn.</div>
 
-<div class="scores">
-  <div class="score shrimp">
-    <span class="icon">🦐</span>
-    <span>Shrimp:&nbsp;</span>
-    <span id="shrimp-score">0</span>
-  </div>
-  <div class="score lobster">
-    <span class="icon">🦞</span>
-    <span>Lobster:&nbsp;</span>
-    <span id="lobster-score">0</span>
-  </div>
-</div>
+        <div class="scores">
+          <div class="score"><span>🟡 Player 1</span><span id="score-p1">0</span></div>
+          <div class="score"><span>🔴 Player 2</span><span id="score-p2">0</span></div>
+        </div>
 
-<div class="status" id="status">
-  <span class="turn-icon" id="turn-icon">🦐</span>
-  <span id="status-text">Shrimp's turn — pick a column!</span>
-</div>
+        <div class="board-wrap">
+          <div class="board" id="board" aria-label="Connect Four board"></div>
+        </div>
+      </section>
+    </div>
+  </main>
 
-<div class="board-wrap">
-  <div id="hints"></div>
-  <div class="board" id="board" role="grid" aria-label="Connect Four board"></div>
-</div>
+  <script>
+    const ROWS = 6;
+    const COLS = 7;
 
-<div class="controls">
-  <button id="reset-btn">🌴 New Round</button>
-  <button id="reset-score-btn" class="secondary">🐚 Reset Scores</button>
-</div>
+    const boardEl = document.getElementById('board');
+    const statusEl = document.getElementById('status');
+    const modeEl = document.getElementById('mode');
+    const difficultyEl = document.getElementById('difficulty');
+    const difficultyRowEl = document.getElementById('difficulty-row');
+    const scoreP1El = document.getElementById('score-p1');
+    const scoreP2El = document.getElementById('score-p2');
 
-<div class="shells" aria-hidden="true">
-  <span>🐚</span><span>⭐</span><span>🐚</span><span>🌟</span>
-  <span>🐚</span><span>⭐</span><span>🐚</span>
-</div>
+    let grid;
+    let currentPlayer;
+    let gameOver;
+    let scores = { p1: 0, p2: 0 };
 
-<div class="winner-overlay" id="overlay" aria-hidden="true"></div>
+    function resetBoard() {
+      grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+      currentPlayer = 'p1';
+      gameOver = false;
+      render();
+      updateStatus("Player 1's turn.");
 
-<script>
-  const ROWS = 6;
-  const COLS = 7;
-  const PLAYERS = {
-    shrimp:  { name: 'Shrimp',  icon: '🦐', cls: 'shrimp',  color: '#c98a00' },
-    lobster: { name: 'Lobster', icon: '🦞', cls: 'lobster', color: '#c93418' }
-  };
-
-  let board = [];
-  let current = 'shrimp';
-  let gameOver = false;
-  let scores = { shrimp: 0, lobster: 0 };
-
-  const boardEl = document.getElementById('board');
-  const hintsEl = document.getElementById('hints');
-  const statusText = document.getElementById('status-text');
-  const turnIcon = document.getElementById('turn-icon');
-  const overlay = document.getElementById('overlay');
-
-  function init() {
-    board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-    current = 'shrimp';
-    gameOver = false;
-    boardEl.innerHTML = '';
-    hintsEl.innerHTML = '';
-    overlay.innerHTML = '';
-
-    // Build hint indicators above each column
-    // .board-wrap has 18px padding + .board has 12px padding = 30px offset
-    const offset = 30;
-    const gap = 10;
-    const cellW = getCellSize();
-    for (let c = 0; c < COLS; c++) {
-      const hint = document.createElement('div');
-      hint.className = 'column-hint';
-      hint.dataset.col = c;
-      hint.textContent = PLAYERS[current].icon;
-      hint.style.left = `${offset + c * (cellW + gap)}px`;
-      hint.style.width = `${cellW}px`;
-      hintsEl.appendChild(hint);
+      if (isAiTurn()) {
+        queueAiMove();
+      }
     }
 
-    // Build cells
-    for (let r = 0; r < ROWS; r++) {
+    function render() {
+      boardEl.innerHTML = '';
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cell = document.createElement('button');
+          cell.className = 'cell';
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          const value = grid[r][c];
+
+          if (value === 'p1') cell.classList.add('p1');
+          if (value === 'p2') cell.classList.add('p2');
+
+          cell.disabled = !!value || gameOver || isAiTurn();
+          cell.setAttribute('aria-label', `Row ${r + 1}, Column ${c + 1}`);
+          cell.addEventListener('click', () => makeMove(c));
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    function updateStatus(msg) {
+      statusEl.textContent = msg;
+    }
+
+    function getOpenRow(col, state = grid) {
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (!state[r][col]) return r;
+      }
+      return -1;
+    }
+
+    function availableCols(state = grid) {
+      const cols = [];
       for (let c = 0; c < COLS; c++) {
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.dataset.row = r;
-        cell.dataset.col = c;
-        cell.addEventListener('click', () => handleClick(c));
-        cell.addEventListener('mouseenter', () => highlightColumn(c, true));
-        cell.addEventListener('mouseleave', () => highlightColumn(c, false));
-        boardEl.appendChild(cell);
+        if (getOpenRow(c, state) !== -1) cols.push(c);
+      }
+      return cols;
+    }
+
+    function makeMove(col) {
+      if (gameOver) return;
+      const row = getOpenRow(col);
+      if (row === -1) return;
+
+      grid[row][col] = currentPlayer;
+      const winLine = getWinningLine(row, col, currentPlayer, grid);
+      if (winLine) {
+        finishGame(currentPlayer, winLine);
+        return;
+      }
+
+      if (isBoardFull(grid)) {
+        gameOver = true;
+        updateStatus("It's a draw.");
+        render();
+        return;
+      }
+
+      currentPlayer = currentPlayer === 'p1' ? 'p2' : 'p1';
+      render();
+      updateStatus(currentPlayer === 'p1' ? "Player 1's turn." : modeEl.value === 'ai' ? "ChatGPT 5.5 Bot is thinking…" : "Player 2's turn.");
+
+      if (isAiTurn()) {
+        queueAiMove();
       }
     }
 
-    updateStatus();
-  }
-
-  function getCellSize() {
-    return window.matchMedia('(max-width: 560px)').matches ? 42 : 64;
-  }
-
-  function highlightColumn(col, on) {
-    if (gameOver) return;
-    document.querySelectorAll(`.cell[data-col="${col}"]`).forEach(cell => {
-      if (!cell.classList.contains('shrimp') && !cell.classList.contains('lobster')) {
-        cell.classList.toggle('hover-target', on);
-      }
-    });
-    const hint = hintsEl.querySelector(`.column-hint[data-col="${col}"]`);
-    if (hint) {
-      hint.textContent = PLAYERS[current].icon;
-      hint.classList.toggle('visible', on && nextOpenRow(col) !== -1);
-    }
-  }
-
-  function nextOpenRow(col) {
-    for (let r = ROWS - 1; r >= 0; r--) {
-      if (!board[r][col]) return r;
-    }
-    return -1;
-  }
-
-  function handleClick(col) {
-    if (gameOver) return;
-    const row = nextOpenRow(col);
-    if (row === -1) return;
-
-    board[row][col] = current;
-    const cell = boardEl.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
-    cell.classList.add(PLAYERS[current].cls, 'dropping');
-    cell.textContent = PLAYERS[current].icon;
-    cell.classList.remove('hover-target');
-
-    setTimeout(() => cell.classList.remove('dropping'), 460);
-
-    const winLine = checkWin(row, col, current);
-    if (winLine) {
+    function finishGame(player, winLine) {
       gameOver = true;
+      scores[player]++;
+      scoreP1El.textContent = scores.p1;
+      scoreP2El.textContent = scores.p2;
+      render();
+
       winLine.forEach(([r, c]) => {
-        const winCell = boardEl.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
-        winCell.classList.add('win');
+        const el = boardEl.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+        if (el) el.classList.add('win');
       });
-      scores[current]++;
-      document.getElementById(`${current}-score`).textContent = scores[current];
-      statusText.textContent = `${PLAYERS[current].icon} ${PLAYERS[current].name} wins! 🌅`;
-      turnIcon.textContent = '🏆';
-      celebrate();
-      return;
-    }
 
-    if (isBoardFull()) {
-      gameOver = true;
-      statusText.textContent = "It's a tide! 🌊 (draw)";
-      turnIcon.textContent = '🤝';
-      return;
-    }
-
-    current = current === 'shrimp' ? 'lobster' : 'shrimp';
-    updateStatus();
-    // Refresh hint icon if user is still hovering (re-evaluate any visible hint)
-    document.querySelectorAll('.column-hint.visible').forEach(h => {
-      h.textContent = PLAYERS[current].icon;
-    });
-  }
-
-  function isBoardFull() {
-    return board.every(row => row.every(cell => cell !== null));
-  }
-
-  function updateStatus() {
-    const p = PLAYERS[current];
-    statusText.textContent = `${p.name}'s turn — pick a column!`;
-    turnIcon.textContent = p.icon;
-  }
-
-  function checkWin(row, col, player) {
-    const directions = [
-      [0, 1],   // horizontal
-      [1, 0],   // vertical
-      [1, 1],   // diagonal down-right
-      [1, -1]   // diagonal down-left
-    ];
-    for (const [dr, dc] of directions) {
-      const line = [[row, col]];
-      // forward
-      let r = row + dr, c = col + dc;
-      while (inBounds(r, c) && board[r][c] === player) {
-        line.push([r, c]);
-        r += dr; c += dc;
+      if (player === 'p1') {
+        updateStatus('🟡 Player 1 wins!');
+      } else {
+        updateStatus(modeEl.value === 'ai' ? '🔴 ChatGPT 5.5 Bot wins!' : '🔴 Player 2 wins!');
       }
-      // backward
-      r = row - dr; c = col - dc;
-      while (inBounds(r, c) && board[r][c] === player) {
-        line.unshift([r, c]);
-        r -= dr; c -= dc;
+    }
+
+    function isBoardFull(state) {
+      return state.every(row => row.every(Boolean));
+    }
+
+    function getWinningLine(row, col, player, state) {
+      const dirs = [[0,1], [1,0], [1,1], [1,-1]];
+      for (const [dr, dc] of dirs) {
+        const line = [[row, col]];
+
+        let r = row + dr, c = col + dc;
+        while (inBounds(r, c) && state[r][c] === player) {
+          line.push([r, c]);
+          r += dr;
+          c += dc;
+        }
+
+        r = row - dr; c = col - dc;
+        while (inBounds(r, c) && state[r][c] === player) {
+          line.unshift([r, c]);
+          r -= dr;
+          c -= dc;
+        }
+
+        if (line.length >= 4) return line;
       }
-      if (line.length >= 4) return line;
+      return null;
     }
-    return null;
-  }
 
-  function inBounds(r, c) {
-    return r >= 0 && r < ROWS && c >= 0 && c < COLS;
-  }
-
-  function celebrate() {
-    overlay.innerHTML = '';
-    for (let i = 0; i < 60; i++) {
-      const ball = document.createElement('div');
-      ball.className = 'ball';
-      ball.style.left = Math.random() * 100 + 'vw';
-      ball.style.animationDuration = (2 + Math.random() * 2.5) + 's';
-      ball.style.animationDelay = (Math.random() * 0.8) + 's';
-      ball.style.width = ball.style.height = (16 + Math.random() * 18) + 'px';
-      overlay.appendChild(ball);
+    function inBounds(r, c) {
+      return r >= 0 && r < ROWS && c >= 0 && c < COLS;
     }
-    setTimeout(() => { overlay.innerHTML = ''; }, 5000);
-  }
 
-  document.getElementById('reset-btn').addEventListener('click', init);
-  document.getElementById('reset-score-btn').addEventListener('click', () => {
-    scores = { shrimp: 0, lobster: 0 };
-    document.getElementById('shrimp-score').textContent = '0';
-    document.getElementById('lobster-score').textContent = '0';
-    init();
-  });
+    function cloneGrid(state) {
+      return state.map(row => [...row]);
+    }
 
-  // Keyboard support: 1-7 to drop in column
-  document.addEventListener('keydown', (e) => {
-    const n = parseInt(e.key, 10);
-    if (n >= 1 && n <= 7) handleClick(n - 1);
-    if (e.key === 'r' || e.key === 'R') init();
-  });
+    function isAiTurn() {
+      return modeEl.value === 'ai' && currentPlayer === 'p2' && !gameOver;
+    }
 
-  window.addEventListener('resize', () => {
-    const cellW = getCellSize();
-    const offset = 30;
-    const gap = 10;
-    hintsEl.querySelectorAll('.column-hint').forEach((hint, c) => {
-      hint.style.left = `${offset + c * (cellW + gap)}px`;
-      hint.style.width = `${cellW}px`;
+    function queueAiMove() {
+      render();
+      setTimeout(() => {
+        const col = chooseAiColumn();
+        makeMove(col);
+      }, 300);
+    }
+
+    function chooseAiColumn() {
+      const cols = availableCols();
+      const difficulty = difficultyEl.value;
+
+      if (difficulty === 'easy') {
+        return cols[Math.floor(Math.random() * cols.length)];
+      }
+
+      // Immediate win
+      for (const col of cols) {
+        if (isWinningDrop(col, 'p2')) return col;
+      }
+
+      // Immediate block
+      for (const col of cols) {
+        if (isWinningDrop(col, 'p1')) return col;
+      }
+
+      if (difficulty === 'medium') {
+        return pickBestHeuristic(cols);
+      }
+
+      // hard: shallow minimax
+      return minimaxMove(4).col;
+    }
+
+    function isWinningDrop(col, player) {
+      const test = cloneGrid(grid);
+      const row = getOpenRow(col, test);
+      if (row === -1) return false;
+      test[row][col] = player;
+      return !!getWinningLine(row, col, player, test);
+    }
+
+    function pickBestHeuristic(cols) {
+      const center = 3;
+      const scored = cols.map(col => {
+        const test = cloneGrid(grid);
+        const row = getOpenRow(col, test);
+        test[row][col] = 'p2';
+        return {
+          col,
+          score: evaluateBoard(test, 'p2') - Math.abs(center - col) * 2 + Math.random()
+        };
+      });
+      scored.sort((a, b) => b.score - a.score);
+      return scored[0].col;
+    }
+
+    function minimaxMove(depth) {
+      const result = minimax(cloneGrid(grid), depth, -Infinity, Infinity, true);
+      if (result.col == null) {
+        const cols = availableCols();
+        return { col: cols[Math.floor(Math.random() * cols.length)] };
+      }
+      return result;
+    }
+
+    function minimax(state, depth, alpha, beta, maximizing) {
+      const cols = availableCols(state);
+
+      if (depth === 0 || cols.length === 0 || hasWinner(state, 'p1') || hasWinner(state, 'p2')) {
+        return { score: scoreTerminal(state, depth) };
+      }
+
+      if (maximizing) {
+        let best = { score: -Infinity, col: cols[0] };
+        for (const col of cols) {
+          const test = cloneGrid(state);
+          const row = getOpenRow(col, test);
+          test[row][col] = 'p2';
+          const val = minimax(test, depth - 1, alpha, beta, false).score;
+          if (val > best.score) best = { score: val, col };
+          alpha = Math.max(alpha, val);
+          if (beta <= alpha) break;
+        }
+        return best;
+      }
+
+      let best = { score: Infinity, col: cols[0] };
+      for (const col of cols) {
+        const test = cloneGrid(state);
+        const row = getOpenRow(col, test);
+        test[row][col] = 'p1';
+        const val = minimax(test, depth - 1, alpha, beta, true).score;
+        if (val < best.score) best = { score: val, col };
+        beta = Math.min(beta, val);
+        if (beta <= alpha) break;
+      }
+      return best;
+    }
+
+    function scoreTerminal(state, depth) {
+      if (hasWinner(state, 'p2')) return 100000 + depth;
+      if (hasWinner(state, 'p1')) return -100000 - depth;
+      return evaluateBoard(state, 'p2') - evaluateBoard(state, 'p1');
+    }
+
+    function hasWinner(state, player) {
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (state[r][c] !== player) continue;
+          if (getWinningLine(r, c, player, state)) return true;
+        }
+      }
+      return false;
+    }
+
+    function evaluateBoard(state, player) {
+      const windows = [];
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS - 3; c++) {
+          windows.push([state[r][c], state[r][c+1], state[r][c+2], state[r][c+3]]);
+        }
+      }
+
+      for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS - 3; r++) {
+          windows.push([state[r][c], state[r+1][c], state[r+2][c], state[r+3][c]]);
+        }
+      }
+
+      for (let r = 0; r < ROWS - 3; r++) {
+        for (let c = 0; c < COLS - 3; c++) {
+          windows.push([state[r][c], state[r+1][c+1], state[r+2][c+2], state[r+3][c+3]]);
+        }
+      }
+
+      for (let r = 3; r < ROWS; r++) {
+        for (let c = 0; c < COLS - 3; c++) {
+          windows.push([state[r][c], state[r-1][c+1], state[r-2][c+2], state[r-3][c+3]]);
+        }
+      }
+
+      let score = 0;
+      for (const window of windows) {
+        const mine = window.filter(v => v === player).length;
+        const empty = window.filter(v => v == null).length;
+        if (mine === 4) score += 100;
+        else if (mine === 3 && empty === 1) score += 5;
+        else if (mine === 2 && empty === 2) score += 2;
+      }
+      return score;
+    }
+
+    modeEl.addEventListener('change', () => {
+      difficultyRowEl.style.display = modeEl.value === 'ai' ? 'flex' : 'none';
+      resetBoard();
     });
-  });
 
-  init();
-</script>
+    difficultyEl.addEventListener('change', resetBoard);
+    document.getElementById('new-game').addEventListener('click', resetBoard);
+    document.getElementById('reset-scores').addEventListener('click', () => {
+      scores = { p1: 0, p2: 0 };
+      scoreP1El.textContent = '0';
+      scoreP2El.textContent = '0';
+      resetBoard();
+    });
+
+    resetBoard();
+  </script>
 </body>
 </html>
