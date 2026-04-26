@@ -361,6 +361,48 @@
     box-shadow: 0 1px 0 #144e72, 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 
+  /* Mode + difficulty toggles */
+  .mode-bar, .diff-bar {
+    z-index: 2;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .diff-bar { margin-bottom: 12px; }
+  .diff-bar .diff-label {
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    margin-right: 4px;
+  }
+
+  .toggle-btn {
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--ocean-deep);
+    border: 2px solid transparent;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 24px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    transition: transform 0.1s ease, background 0.15s ease, color 0.15s ease;
+    text-shadow: none;
+    letter-spacing: 0.3px;
+    font-family: inherit;
+  }
+  .toggle-btn:hover { transform: translateY(-1px); }
+  .toggle-btn.active {
+    background: linear-gradient(180deg, var(--sun) 0%, #ffae3a 100%);
+    color: #5a3a00;
+    border-color: #d99012;
+    box-shadow: 0 2px 0 #b87411, 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  .diff-bar.hidden { display: none; }
+
   /* Sand at bottom decorations */
   .shells {
     position: fixed;
@@ -462,6 +504,17 @@
   </div>
 </div>
 
+<div class="mode-bar" id="mode-bar">
+  <button class="toggle-btn active" data-mode="human">🦐 vs 🦞 Friend</button>
+  <button class="toggle-btn"        data-mode="bot">🦐 vs 🤖 Lobster Bot</button>
+</div>
+<div class="diff-bar hidden" id="diff-bar">
+  <span class="diff-label">🦞 Bot tide:</span>
+  <button class="toggle-btn"        data-diff="easy">Chill 🌊</button>
+  <button class="toggle-btn active" data-diff="medium">Cruisin' 🏄</button>
+  <button class="toggle-btn"        data-diff="hard">Riptide 🌪</button>
+</div>
+
 <div class="status" id="status">
   <span class="turn-icon" id="turn-icon">🦐</span>
   <span id="status-text">Shrimp's turn — pick a column!</span>
@@ -497,16 +550,27 @@
   let gameOver = false;
   let scores = { shrimp: 0, lobster: 0 };
 
+  let mode = 'human';        // 'human' or 'bot'
+  let difficulty = 'medium'; // 'easy' | 'medium' | 'hard'
+  let botThinking = false;
+
   const boardEl = document.getElementById('board');
   const hintsEl = document.getElementById('hints');
   const statusText = document.getElementById('status-text');
   const turnIcon = document.getElementById('turn-icon');
   const overlay = document.getElementById('overlay');
+  const modeBar = document.getElementById('mode-bar');
+  const diffBar = document.getElementById('diff-bar');
+
+  function isBotTurn() {
+    return mode === 'bot' && current === 'lobster' && !gameOver;
+  }
 
   function init() {
     board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     current = 'shrimp';
     gameOver = false;
+    botThinking = false;
     boardEl.innerHTML = '';
     hintsEl.innerHTML = '';
     overlay.innerHTML = '';
@@ -548,7 +612,7 @@
   }
 
   function highlightColumn(col, on) {
-    if (gameOver) return;
+    if (gameOver || isBotTurn() || botThinking) return;
     document.querySelectorAll(`.cell[data-col="${col}"]`).forEach(cell => {
       if (!cell.classList.contains('shrimp') && !cell.classList.contains('lobster')) {
         cell.classList.toggle('hover-target', on);
@@ -568,8 +632,10 @@
     return -1;
   }
 
-  function handleClick(col) {
+  function handleClick(col, fromBot = false) {
     if (gameOver) return;
+    if (!fromBot && isBotTurn()) return; // ignore human input during bot turn
+    if (botThinking && !fromBot) return;
     const row = nextOpenRow(col);
     if (row === -1) return;
 
@@ -590,7 +656,8 @@
       });
       scores[current]++;
       document.getElementById(`${current}-score`).textContent = scores[current];
-      statusText.textContent = `${PLAYERS[current].icon} ${PLAYERS[current].name} wins! 🌅`;
+      const winnerName = (mode === 'bot' && current === 'lobster') ? 'Lobster Bot' : PLAYERS[current].name;
+      statusText.textContent = `${PLAYERS[current].icon} ${winnerName} wins! 🌅`;
       turnIcon.textContent = '🏆';
       celebrate();
       return;
@@ -605,10 +672,13 @@
 
     current = current === 'shrimp' ? 'lobster' : 'shrimp';
     updateStatus();
-    // Refresh hint icon if user is still hovering (re-evaluate any visible hint)
     document.querySelectorAll('.column-hint.visible').forEach(h => {
-      h.textContent = PLAYERS[current].icon;
+      h.classList.remove('visible'); // hide hover hint until user re-hovers
     });
+
+    if (isBotTurn()) {
+      scheduleBotMove();
+    }
   }
 
   function isBoardFull() {
@@ -617,7 +687,13 @@
 
   function updateStatus() {
     const p = PLAYERS[current];
-    statusText.textContent = `${p.name}'s turn — pick a column!`;
+    if (isBotTurn()) {
+      statusText.textContent = `🤖 Lobster Bot is thinking…`;
+    } else if (mode === 'bot' && current === 'shrimp') {
+      statusText.textContent = `${p.name}'s turn — pick a column!`;
+    } else {
+      statusText.textContent = `${p.name}'s turn — pick a column!`;
+    }
     turnIcon.textContent = p.icon;
   }
 
@@ -665,6 +741,158 @@
     setTimeout(() => { overlay.innerHTML = ''; }, 5000);
   }
 
+  // ---------- Bot / AI ----------
+
+  function scheduleBotMove() {
+    botThinking = true;
+    updateStatus();
+    setTimeout(() => {
+      if (gameOver || !isBotTurn()) { botThinking = false; return; }
+      const col = chooseBotColumn();
+      botThinking = false;
+      handleClick(col, true);
+    }, 450);
+  }
+
+  function cloneBoard(state) { return state.map(row => [...row]); }
+
+  function openRowIn(state, col) {
+    for (let r = ROWS - 1; r >= 0; r--) if (!state[r][col]) return r;
+    return -1;
+  }
+
+  function availableCols(state) {
+    const cols = [];
+    for (let c = 0; c < COLS; c++) if (openRowIn(state, c) !== -1) cols.push(c);
+    return cols;
+  }
+
+  function isWinningDrop(state, col, player) {
+    const row = openRowIn(state, col);
+    if (row === -1) return false;
+    const test = cloneBoard(state);
+    test[row][col] = player;
+    return !!winningLine(test, row, col, player);
+  }
+
+  function winningLine(state, row, col, player) {
+    const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+    for (const [dr, dc] of dirs) {
+      const line = [[row, col]];
+      let r = row + dr, c = col + dc;
+      while (inBounds(r, c) && state[r][c] === player) { line.push([r, c]); r += dr; c += dc; }
+      r = row - dr; c = col - dc;
+      while (inBounds(r, c) && state[r][c] === player) { line.unshift([r, c]); r -= dr; c -= dc; }
+      if (line.length >= 4) return line;
+    }
+    return null;
+  }
+
+  function hasWinner(state, player) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (state[r][c] === player && winningLine(state, r, c, player)) return true;
+      }
+    }
+    return false;
+  }
+
+  function evaluateBoard(state, player) {
+    const windows = [];
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS - 3; c++)
+        windows.push([state[r][c], state[r][c+1], state[r][c+2], state[r][c+3]]);
+    for (let c = 0; c < COLS; c++)
+      for (let r = 0; r < ROWS - 3; r++)
+        windows.push([state[r][c], state[r+1][c], state[r+2][c], state[r+3][c]]);
+    for (let r = 0; r < ROWS - 3; r++)
+      for (let c = 0; c < COLS - 3; c++)
+        windows.push([state[r][c], state[r+1][c+1], state[r+2][c+2], state[r+3][c+3]]);
+    for (let r = 3; r < ROWS; r++)
+      for (let c = 0; c < COLS - 3; c++)
+        windows.push([state[r][c], state[r-1][c+1], state[r-2][c+2], state[r-3][c+3]]);
+
+    let score = 0;
+    for (const w of windows) {
+      const mine  = w.filter(v => v === player).length;
+      const empty = w.filter(v => v == null).length;
+      if (mine === 4) score += 100;
+      else if (mine === 3 && empty === 1) score += 5;
+      else if (mine === 2 && empty === 2) score += 2;
+    }
+    return score;
+  }
+
+  function scoreTerminal(state, depth) {
+    if (hasWinner(state, 'lobster')) return 100000 + depth;
+    if (hasWinner(state, 'shrimp'))  return -100000 - depth;
+    return evaluateBoard(state, 'lobster') - evaluateBoard(state, 'shrimp');
+  }
+
+  function minimax(state, depth, alpha, beta, maximizing) {
+    const cols = availableCols(state);
+    if (depth === 0 || cols.length === 0 || hasWinner(state, 'shrimp') || hasWinner(state, 'lobster')) {
+      return { score: scoreTerminal(state, depth) };
+    }
+    if (maximizing) {
+      let best = { score: -Infinity, col: cols[0] };
+      for (const col of cols) {
+        const test = cloneBoard(state);
+        const row = openRowIn(test, col);
+        test[row][col] = 'lobster';
+        const val = minimax(test, depth - 1, alpha, beta, false).score;
+        if (val > best.score) best = { score: val, col };
+        alpha = Math.max(alpha, val);
+        if (beta <= alpha) break;
+      }
+      return best;
+    }
+    let best = { score: Infinity, col: cols[0] };
+    for (const col of cols) {
+      const test = cloneBoard(state);
+      const row = openRowIn(test, col);
+      test[row][col] = 'shrimp';
+      const val = minimax(test, depth - 1, alpha, beta, true).score;
+      if (val < best.score) best = { score: val, col };
+      beta = Math.min(beta, val);
+      if (beta <= alpha) break;
+    }
+    return best;
+  }
+
+  function chooseBotColumn() {
+    const cols = availableCols(board);
+    if (cols.length === 0) return -1;
+
+    if (difficulty === 'easy') {
+      return cols[Math.floor(Math.random() * cols.length)];
+    }
+
+    for (const col of cols) if (isWinningDrop(board, col, 'lobster')) return col;
+    for (const col of cols) if (isWinningDrop(board, col, 'shrimp'))  return col;
+
+    if (difficulty === 'medium') {
+      const center = 3;
+      const scored = cols.map(col => {
+        const test = cloneBoard(board);
+        const row = openRowIn(test, col);
+        test[row][col] = 'lobster';
+        return {
+          col,
+          score: evaluateBoard(test, 'lobster') - Math.abs(center - col) * 2 + Math.random()
+        };
+      });
+      scored.sort((a, b) => b.score - a.score);
+      return scored[0].col;
+    }
+
+    // hard: shallow minimax
+    const result = minimax(cloneBoard(board), 4, -Infinity, Infinity, true);
+    return result.col != null ? result.col : cols[Math.floor(Math.random() * cols.length)];
+  }
+
+  // ---------- Wiring ----------
+
   document.getElementById('reset-btn').addEventListener('click', init);
   document.getElementById('reset-score-btn').addEventListener('click', () => {
     scores = { shrimp: 0, lobster: 0 };
@@ -673,8 +901,26 @@
     init();
   });
 
+  modeBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.toggle-btn');
+    if (!btn || !btn.dataset.mode) return;
+    mode = btn.dataset.mode;
+    modeBar.querySelectorAll('.toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
+    diffBar.classList.toggle('hidden', mode !== 'bot');
+    init();
+  });
+
+  diffBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.toggle-btn');
+    if (!btn || !btn.dataset.diff) return;
+    difficulty = btn.dataset.diff;
+    diffBar.querySelectorAll('.toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
+    init();
+  });
+
   // Keyboard support: 1-7 to drop in column
   document.addEventListener('keydown', (e) => {
+    if (botThinking || isBotTurn()) return;
     const n = parseInt(e.key, 10);
     if (n >= 1 && n <= 7) handleClick(n - 1);
     if (e.key === 'r' || e.key === 'R') init();
