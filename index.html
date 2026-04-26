@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Beach Connect Four — Shrimp vs Crab</title>
+<title>Beach Connect Four — Shrimp vs Lobster</title>
 <style>
   :root {
     --sand: #f4e2b8;
@@ -14,10 +14,10 @@
     --sun: #ffd35a;
     --coral: #ff7f6b;
     --palm: #2d8a4e;
-    --shrimp: #ff8a7a;
-    --shrimp-deep: #e25a4a;
-    --crab: #ff5b3c;
-    --crab-deep: #c93418;
+    --shrimp: #ffd84d;
+    --shrimp-deep: #c98a00;
+    --lobster: #ff5b3c;
+    --lobster-deep: #c93418;
     --board: #f8d98a;
     --board-shadow: #b88a30;
   }
@@ -197,8 +197,8 @@
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
   }
   .score .icon { font-size: 22px; }
-  .score.shrimp { border: 2px solid var(--shrimp-deep); color: var(--shrimp-deep); }
-  .score.crab   { border: 2px solid var(--crab-deep);   color: var(--crab-deep); }
+  .score.shrimp  { border: 2px solid var(--shrimp-deep);  color: var(--shrimp-deep); }
+  .score.lobster { border: 2px solid var(--lobster-deep); color: var(--lobster-deep); }
 
   /* Board */
   .board-wrap {
@@ -250,22 +250,22 @@
   }
 
   .cell.shrimp,
-  .cell.crab {
+  .cell.lobster {
     cursor: default;
   }
 
   .cell.shrimp {
     background:
-      radial-gradient(circle at 30% 30%, #ffd2c8 0%, var(--shrimp) 55%, var(--shrimp-deep) 100%);
+      radial-gradient(circle at 30% 30%, #fff8c5 0%, var(--shrimp) 55%, var(--shrimp-deep) 100%);
     box-shadow:
       inset 0 -3px 6px rgba(0, 0, 0, 0.25),
       inset 0 3px 4px rgba(255, 255, 255, 0.5),
       0 2px 4px rgba(0, 0, 0, 0.2);
   }
 
-  .cell.crab {
+  .cell.lobster {
     background:
-      radial-gradient(circle at 30% 30%, #ffb39e 0%, var(--crab) 55%, var(--crab-deep) 100%);
+      radial-gradient(circle at 30% 30%, #ffb39e 0%, var(--lobster) 55%, var(--lobster-deep) 100%);
     box-shadow:
       inset 0 -3px 6px rgba(0, 0, 0, 0.25),
       inset 0 3px 4px rgba(255, 255, 255, 0.5),
@@ -446,7 +446,7 @@
 
 <header>
   <h1>🏖️ Beach Connect Four 🌊</h1>
-  <p class="subtitle">Shrimp vs. Crab — first to 4 in a row wins the tide!</p>
+  <p class="subtitle">Shrimp vs. Lobster — first to 4 in a row wins the tide!</p>
 </header>
 
 <div class="scores">
@@ -455,10 +455,10 @@
     <span>Shrimp:&nbsp;</span>
     <span id="shrimp-score">0</span>
   </div>
-  <div class="score crab">
-    <span class="icon">🦀</span>
-    <span>Crab:&nbsp;</span>
-    <span id="crab-score">0</span>
+  <div class="score lobster">
+    <span class="icon">🦞</span>
+    <span>Lobster:&nbsp;</span>
+    <span id="lobster-score">0</span>
   </div>
 </div>
 
@@ -488,14 +488,14 @@
   const ROWS = 6;
   const COLS = 7;
   const PLAYERS = {
-    shrimp: { name: 'Shrimp', icon: '🦐', cls: 'shrimp', color: '#e25a4a' },
-    crab:   { name: 'Crab',   icon: '🦀', cls: 'crab',   color: '#c93418' }
+    shrimp:  { name: 'Shrimp',  icon: '🦐', cls: 'shrimp',  color: '#c98a00' },
+    lobster: { name: 'Lobster', icon: '🦞', cls: 'lobster', color: '#c93418' }
   };
 
   let board = [];
   let current = 'shrimp';
   let gameOver = false;
-  let scores = { shrimp: 0, crab: 0 };
+  let scores = { shrimp: 0, lobster: 0 };
 
   const boardEl = document.getElementById('board');
   const hintsEl = document.getElementById('hints');
@@ -550,7 +550,7 @@
   function highlightColumn(col, on) {
     if (gameOver) return;
     document.querySelectorAll(`.cell[data-col="${col}"]`).forEach(cell => {
-      if (!cell.classList.contains('shrimp') && !cell.classList.contains('crab')) {
+      if (!cell.classList.contains('shrimp') && !cell.classList.contains('lobster')) {
         cell.classList.toggle('hover-target', on);
       }
     });
@@ -603,7 +603,7 @@
       return;
     }
 
-    current = current === 'shrimp' ? 'crab' : 'shrimp';
+    current = current === 'shrimp' ? 'lobster' : 'shrimp';
     updateStatus();
     // Refresh hint icon if user is still hovering (re-evaluate any visible hint)
     document.querySelectorAll('.column-hint.visible').forEach(h => {
@@ -667,9 +667,9 @@
 
   document.getElementById('reset-btn').addEventListener('click', init);
   document.getElementById('reset-score-btn').addEventListener('click', () => {
-    scores = { shrimp: 0, crab: 0 };
+    scores = { shrimp: 0, lobster: 0 };
     document.getElementById('shrimp-score').textContent = '0';
-    document.getElementById('crab-score').textContent = '0';
+    document.getElementById('lobster-score').textContent = '0';
     init();
   });
 
